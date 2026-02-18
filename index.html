@@ -3194,9 +3194,10 @@ function processPayment(orderData) {
     
     switch(paymentMethod) {
         case 'liqpay':
+            const private_key = 'sandbox_1vmnibS39hrAZJWIo3iHizMdRBLKCol953Pa8Otp';
             paymentUrl = `https://www.liqpay.ua/api/3/checkout?data=${btoa(JSON.stringify({
                 version: 3,
-                public_key: 'your_liqpay_public_key',
+                public_key: 'sandbox_i71015848575',
                 action: 'pay',
                 amount: orderData.total,
                 currency: 'UAH',
@@ -3325,4 +3326,5 @@ async function finalizeOrder() {
     </script>
 </body>
 </html>
+
 
