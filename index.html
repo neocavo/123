@@ -3076,64 +3076,7 @@
             document.getElementById('finalTotal').textContent = total.toLocaleString() + ' грн';
         }
 
-        async function finalizeOrder() {
-            const payment = document.querySelector('input[name="payment"]:checked');
-            if (!payment) { alert('Оберіть спосіб оплати!'); return; }
-
-            const paymentMethod = payment.value;
-            const paymentNames = {
-                'liqpay': 'LiqPay', 'fondy': 'Fondy', 'wayforpay': 'WayForPay', 'cash': 'Накладений платіж'
-            };
-
-            const deliveryType = document.querySelector('input[name="delivery"]:checked').value;
-            let deliveryDetails = { type: deliveryType };
-
-            if (deliveryType === 'novaposhta') {
-                deliveryDetails.region = document.getElementById('npRegion').value;
-                deliveryDetails.city = document.getElementById('npCity').value;
-                deliveryDetails.street = document.getElementById('npStreet').value;
-                deliveryDetails.warehouse = document.getElementById('npWarehouse').value;
-            } else if (deliveryType === 'ukrposhta') {
-                deliveryDetails.region = document.getElementById('ukrRegion').value;
-                deliveryDetails.city = document.getElementById('ukrCity').value;
-                deliveryDetails.street = document.getElementById('ukrStreet').value;
-                deliveryDetails.postcode = document.getElementById('ukrPostcode').value;
-            }
-
-            const order = {
-                id: Date.now(),
-                items: cart.map(item => ({
-                    productId: item.productId,
-                    product: { id: item.product.id, name: item.product.name, price: item.product.price },
-                    quantity: item.quantity
-                })),
-                total: cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0),
-                customer: {
-                    name: document.getElementById('customerName').value,
-                    surname: document.getElementById('customerSurname').value,
-                    phone: document.getElementById('customerPhone').value,
-                    email: document.getElementById('customerEmail').value
-                },
-                delivery: deliveryDetails,
-                payment: { method: paymentNames[paymentMethod], type: paymentMethod },
-                date: new Date().toISOString(),
-                status: 'pending'
-            };
-
-            const saved = await saveOrderToFirebase(order);
-            if (saved) {
-                orders.push(order);
-                cart = [];
-                saveToStorage();
-                updateCart();
-                closeCheckoutModal();
-                alert(`✅ Замовлення #${order.id.toString().slice(-6)} успішно оформлено!`);
-                if (currentUser?.isAdmin) loadOrdersFromFirebase();
-            } else {
-                alert('❌ Помилка при збереженні замовлення. Спробуйте ще раз.');
-            }
-        }
-
+       
         // ============ СТАТИСТИКА ============
         function updateAdminStats() {
             document.getElementById('totalCategories').textContent = categories.length;
@@ -3326,5 +3269,6 @@ async function finalizeOrder() {
     </script>
 </body>
 </html>
+
 
 
