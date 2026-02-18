@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Profi - Результат оплати</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2E8B32;
+            --secondary: #45B049;
+            --accent: #1B6E20;
+            --dark: #212121;
+            --light: #FFFFFF;
+            --gray: #757575;
+            --success: #4CAF50;
+            --error: #f44336;
+            --warning: #ff9800;
+            --border: #A5D6A7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .result-container {
+            background: var(--light);
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(46, 139, 50, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            border: 2px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 10px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary));
+        }
+
+        .status-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            animation: scaleIn 0.5s ease;
+        }
+
+        .status-icon.success {
+            background: rgba(76, 175, 80, 0.15);
+            color: var(--success);
+            border: 3px solid var(--success);
+        }
+
+        .status-icon.error {
+            background: rgba(244, 67, 54, 0.15);
+            color: var(--error);
+            border: 3px solid var(--error);
+        }
+
+        .status-icon.pending {
+            background: rgba(255, 152, 0, 0.15);
+            color: var(--warning);
+            border: 3px solid var(--warning);
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            80% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        h1 {
+            color: var(--dark);
+            margin-bottom: 15px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .order-number {
+            font-size: 18px;
+            color: var(--gray);
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 50px;
+            display: inline-block;
+        }
+
+        .order-number span {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 22px;
+        }
+
+        .payment-details {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 20px;
+            padding: 25px;
+            margin: 25px 0;
+            text-align: left;
+            border: 1px solid var(--border);
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--gray);
+        }
+
+        .detail-value {
+            color: var(--dark);
+            font-weight: 700;
+        }
+
+        .detail-value.success {
+            color: var(--success);
+        }
+
+        .detail-value.error {
+            color: var(--error);
+        }
+
+        .amount {
+            font-size: 32px;
+            color: var(--primary);
+            font-weight: 800;
+            margin: 20px 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(46, 139, 50, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(46, 139, 50, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .debug-info {
+            margin-top: 30px;
+            padding: 20px;
+            background: #1e1e1e;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #00ff00;
+            text-align: left;
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .debug-toggle {
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 20px;
+            display: inline-block;
+        }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="result-container">
+        <div class="status-icon" id="statusIcon">⏳</div>
+        
+        <h1 id="statusTitle">Обробка платежу...</h1>
+        
+        <div class="order-number">
+            Замовлення #<span id="orderId">---</span>
+        </div>
+
+        <div class="loader" id="loader"></div>
+
+        <div class="payment-details" id="paymentDetails" style="display: none;">
+            <div class="detail-row">
+                <span class="detail-label">Статус:</span>
+                <span class="detail-value" id="paymentStatus">---</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Сума:</span>
+                <span class="detail-value amount" id="paymentAmount">0 грн</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Платіжна система:</span>
+                <span class="detail-value" id="paymentSystem">---</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">ID транзакції:</span>
+                <span class="detail-value" id="transactionId">---</span>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="window.location.href='/'">Продовжити покупки</button>
+            <button class="btn btn-secondary" onclick="window.location.href='/?page=orders'">Мої замовлення</button>
+        </div>
+
+        <div class="debug-toggle" onclick="toggleDebug()">🔧 Технічна інформація</div>
+        <div class="debug-info" id="debugInfo">
+            <pre id="rawData">Завантаження...</pre>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // ============ FIREBASE КОНФІГУРАЦІЯ ============
+        const firebaseConfig = {
+            apiKey: "AIzaSyBRXdksPhJWagfemIUq1geDQt1oYAiuPsE",
+            authDomain: "energy-profi.firebaseapp.com",
+            projectId: "energy-profi",
+            storageBucket: "energy-profi.firebasestorage.app",
+            messagingSenderId: "59748415602",
+            appId: "1:59748415602:web:e204870dc80acf29d26aeb"
+        };
+
+        // Ініціалізація Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // ============ ОСНОВНІ ФУНКЦІЇ ============
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const data = {};
+            for (const [key, value] of params.entries()) {
+                data[key] = value;
+            }
+            return data;
+        }
+
+        function detectPaymentSystem(params) {
+            if (!params) return 'unknown';
+            if (params.liqpay_order_id || params.signature) return 'liqpay';
+            if (params.order_id && params.merchant_id) return 'fondy';
+            if (params.orderReference && params.transactionStatus) return 'wayforpay';
+            return 'unknown';
+        }
+
+        function getPaymentStatus(params, system) {
+            if (!params) return { status: 'pending', message: 'Очікує' };
+
+            switch(system) {
+                case 'liqpay':
+                    return {
+                        status: params.status === 'success' ? 'success' : 
+                               params.status === 'failure' ? 'error' : 'pending',
+                        message: params.status || 'pending'
+                    };
+                case 'fondy':
+                    return {
+                        status: params.order_status === 'approved' ? 'success' : 
+                               params.order_status === 'declined' ? 'error' : 'pending',
+                        message: params.order_status || 'pending'
+                    };
+                case 'wayforpay':
+                    return {
+                        status: params.transactionStatus === 'Approved' ? 'success' : 
+                               params.transactionStatus === 'Declined' ? 'error' : 'pending',
+                        message: params.transactionStatus || 'pending'
+                    };
+                default:
+                    return { status: 'success', message: 'completed' };
+            }
+        }
+
+        async function updateOrderInFirebase(orderId, paymentData) {
+            try {
+                const ordersRef = db.collection('orders');
+                const snapshot = await ordersRef.where('id', '==', parseInt(orderId)).get();
+                
+                if (!snapshot.empty) {
+                    const orderDoc = snapshot.docs[0];
+                    await orderDoc.ref.update({
+                        paymentStatus: paymentData.status,
+                        paymentData: paymentData,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log('✅ Order updated in Firebase');
+                }
+            } catch (error) {
+                console.error('Error updating order:', error);
+            }
+        }
+
+        function updateUI(params, system, paymentStatus) {
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const loader = document.getElementById('loader');
+            const paymentDetails = document.getElementById('paymentDetails');
+            
+            statusIcon.className = 'status-icon ' + paymentStatus.status;
+            
+            switch(paymentStatus.status) {
+                case 'success':
+                    statusIcon.innerHTML = '✅';
+                    statusTitle.textContent = 'Платіж успішно виконано!';
+                    break;
+                case 'error':
+                    statusIcon.innerHTML = '❌';
+                    statusTitle.textContent = 'Помилка платежу';
+                    break;
+                default:
+                    statusIcon.innerHTML = '⏳';
+                    statusTitle.textContent = 'Платіж в обробці';
+            }
+
+            loader.style.display = 'none';
+            paymentDetails.style.display = 'block';
+
+            let orderId = params?.order_id || params?.orderId || params?.orderReference || '---';
+            document.getElementById('orderId').textContent = orderId.toString().slice(-8);
+            
+            let amount = params?.amount || params?.order_amount || 0;
+            document.getElementById('paymentAmount').textContent = `${Number(amount).toLocaleString()} грн`;
+            
+            const systemNames = { liqpay: 'LiqPay', fondy: 'Fondy', wayforpay: 'WayForPay', unknown: '—' };
+            document.getElementById('paymentSystem').textContent = systemNames[system] || system;
+            
+            let transactionId = params?.transaction_id || params?.transactionId || '—';
+            document.getElementById('transactionId').textContent = transactionId;
+            
+            document.getElementById('paymentStatus').textContent = paymentStatus.message;
+            document.getElementById('paymentStatus').className = 'detail-value ' + paymentStatus.status;
+            
+            document.getElementById('rawData').textContent = JSON.stringify(params, null, 2);
+        }
+
+        async function init() {
+            const params = getUrlParams();
+            const system = detectPaymentSystem(params);
+            const paymentStatus = getPaymentStatus(params, system);
+            
+            updateUI(params, system, paymentStatus);
+            
+            if (params?.order_id || params?.orderId) {
+                await updateOrderInFirebase(params.order_id || params.orderId, {
+                    status: paymentStatus.status,
+                    system: system,
+                    ...params
+                });
+            }
+        }
+
+        function toggleDebug() {
+            const debugInfo = document.getElementById('debugInfo');
+            const toggle = document.querySelector('.debug-toggle');
+            
+            if (debugInfo.style.display === 'none' || debugInfo.style.display === '') {
+                debugInfo.style.display = 'block';
+                toggle.textContent = '🔧 Приховати технічну інформацію';
+            } else {
+                debugInfo.style.display = 'none';
+                toggle.textContent = '🔧 Технічна інформація';
+            }
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
