@@ -3178,6 +3178,151 @@
         });
 
         window.addEventListener('load', init);
+        // ============ ПЛАТІЖНІ ФУНКЦІЇ ============
+function processPayment(orderData) {
+    // Зберігаємо дані для callback
+    localStorage.setItem('pending_payment', JSON.stringify({
+        order_id: orderData.id,
+        amount: orderData.total,
+        email: orderData.customer.email,
+        timestamp: new Date().toISOString()
+    }));
+    
+    // Формуємо URL для платіжної системи
+    let paymentUrl = '';
+    const paymentMethod = orderData.payment.type;
+    
+    switch(paymentMethod) {
+        case 'liqpay':
+            paymentUrl = `https://www.liqpay.ua/api/3/checkout?data=${btoa(JSON.stringify({
+                version: 3,
+                public_key: 'your_liqpay_public_key',
+                action: 'pay',
+                amount: orderData.total,
+                currency: 'UAH',
+                description: 'Замовлення #' + orderData.id,
+                order_id: orderData.id,
+                result_url: window.location.origin + '/payment-result.html',
+                server_url: window.location.origin + '/payment-callback.html'
+            }))}`;
+            break;
+            
+        case 'fondy':
+            paymentUrl = `https://pay.fondy.eu/?order_id=${orderData.id}&amount=${orderData.total * 100}&currency=UAH`;
+            break;
+            
+        case 'wayforpay':
+            paymentUrl = `https://secure.wayforpay.com/pay?orderReference=${orderData.id}&amount=${orderData.total}&currency=UAH`;
+            break;
+            
+        default:
+            // Для готівки просто показуємо результат
+            window.location.href = '/payment-result.html?order_id=' + orderData.id;
+            return;
+    }
+    
+    // Відкриваємо платіжну сторінку в новому вікні
+    const paymentWindow = window.open(paymentUrl, '_blank');
+    
+    // Якщо спливаюче вікно заблоковане, показуємо посилання
+    if (!paymentWindow || paymentWindow.closed || typeof paymentWindow.closed === 'undefined') {
+        alert('Будь ласка, дозвольте спливаючі вікна для оплати або перейдіть за посиланням: ' + paymentUrl);
+    }
+    
+    // Перенаправляємо на сторінку результату
+    setTimeout(() => {
+        window.location.href = '/payment-result.html?order_id=' + orderData.id;
+    }, 1000);
+}
+
+// ============ ОНОВЛЕНА ФУНКЦІЯ FINALIZEORDER ============
+// ЗАМІНІТЬ існуючу функцію finalizeOrder на цю:
+
+async function finalizeOrder() {
+    const payment = document.querySelector('input[name="payment"]:checked');
+    if (!payment) { alert('Оберіть спосіб оплати!'); return; }
+
+    const paymentMethod = payment.value;
+    const paymentNames = {
+        'liqpay': 'LiqPay', 'fondy': 'Fondy', 'wayforpay': 'WayForPay', 'cash': 'Накладений платіж'
+    };
+
+    const deliveryType = document.querySelector('input[name="delivery"]:checked').value;
+    let deliveryDetails = { type: deliveryType };
+
+    if (deliveryType === 'novaposhta') {
+        const region = document.getElementById('npRegion').value;
+        const city = document.getElementById('npCity').value;
+        const street = document.getElementById('npStreet').value;
+        const warehouse = document.getElementById('npWarehouse').value;
+        
+        if (!region || !city || !street || !warehouse) {
+            alert('Заповніть всі поля доставки!');
+            return;
+        }
+        
+        deliveryDetails.region = region;
+        deliveryDetails.city = city;
+        deliveryDetails.street = street;
+        deliveryDetails.warehouse = warehouse;
+        
+    } else if (deliveryType === 'ukrposhta') {
+        const region = document.getElementById('ukrRegion').value;
+        const city = document.getElementById('ukrCity').value;
+        const street = document.getElementById('ukrStreet').value;
+        const postcode = document.getElementById('ukrPostcode').value;
+        
+        if (!region || !city || !street || !postcode) {
+            alert('Заповніть всі поля доставки!');
+            return;
+        }
+        
+        deliveryDetails.region = region;
+        deliveryDetails.city = city;
+        deliveryDetails.street = street;
+        deliveryDetails.postcode = postcode;
+    }
+
+    const order = {
+        id: Date.now(),
+        items: cart.map(item => ({
+            productId: item.productId,
+            product: { id: item.product.id, name: item.product.name, price: item.product.price },
+            quantity: item.quantity
+        })),
+        total: cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0),
+        customer: {
+            name: document.getElementById('customerName').value,
+            surname: document.getElementById('customerSurname').value,
+            phone: document.getElementById('customerPhone').value,
+            email: document.getElementById('customerEmail').value
+        },
+        delivery: deliveryDetails,
+        payment: { method: paymentNames[paymentMethod], type: paymentMethod },
+        date: new Date().toISOString(),
+        status: 'pending'
+    };
+
+    const saved = await saveOrderToFirebase(order);
+    if (saved) {
+        orders.push(order);
+        cart = [];
+        saveToStorage();
+        updateCart();
+        closeCheckoutModal();
+        
+        // Якщо оплата не готівкою, перенаправляємо на платіжну сторінку
+        if (paymentMethod !== 'cash') {
+            processPayment(order);
+        } else {
+            alert(`✅ Замовлення #${order.id.toString().slice(-6)} успішно оформлено!`);
+            if (currentUser?.isAdmin) loadOrdersFromFirebase();
+        }
+    } else {
+        alert('❌ Помилка при збереженні замовлення. Спробуйте ще раз.');
+    }
+}
     </script>
 </body>
 </html>
+
