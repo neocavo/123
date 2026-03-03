@@ -3056,24 +3056,19 @@
                 }
             }
         }
-
-        function selectPayment(method) {
+            function selectPayment(method) {
             document.querySelectorAll('#checkoutStep3 .radio-option').forEach(opt => opt.classList.remove('selected'));
-            const paymentId = 'payment' + method.charAt(0).toUpperCase() + method.slice(1);
-            document.getElementById(paymentId).checked = true;
-            document.getElementById(paymentId).closest('.radio-option').classList.add('selected');
-        }
-
-        function updateOrderSummary() {
-            const summaryItems = document.getElementById('orderSummaryItems');
-            const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-            summaryItems.innerHTML = cart.map(item => `
-                <div class="summary-row">
-                    <span>${item.product.name} x${item.quantity}</span>
-                    <span>${(item.product.price * item.quantity).toLocaleString()} грн</span>
-                </div>
-            `).join('');
-            document.getElementById('finalTotal').textContent = total.toLocaleString() + ' грн';
+            const idMap = {
+                'liqpay':    'paymentLiqpay',
+                'fondy':     'paymentFondy',
+                'wayforpay': 'paymentWay',
+                'cash':      'paymentCash'
+            };
+            const radio = document.getElementById(idMap[method]);
+            if (radio) {
+                radio.checked = true;
+                radio.closest('.radio-option').classList.add('selected');
+            }
         }
 
         async function finalizeOrder() {
@@ -3082,21 +3077,24 @@
 
             const paymentMethod = payment.value;
             const paymentNames = {
-                'liqpay': 'LiqPay', 'fondy': 'Fondy', 'wayforpay': 'WayForPay', 'cash': 'Накладений платіж'
+                'liqpay': 'LiqPay', 'fondy': 'Fondy',
+                'wayforpay': 'WayForPay', 'cash': 'Накладений платіж'
             };
 
-            const deliveryType = document.querySelector('input[name="delivery"]:checked').value;
-            let deliveryDetails = { type: deliveryType };
+            const deliveryRadio = document.querySelector('input[name="delivery"]:checked');
+            if (!deliveryRadio) { alert('Оберіть спосіб доставки!'); return; }
+            const deliveryType = deliveryRadio.value;
 
+            let deliveryDetails = { type: deliveryType };
             if (deliveryType === 'novaposhta') {
-                deliveryDetails.region = document.getElementById('npRegion').value;
-                deliveryDetails.city = document.getElementById('npCity').value;
-                deliveryDetails.street = document.getElementById('npStreet').value;
+                deliveryDetails.region    = document.getElementById('npRegion').value;
+                deliveryDetails.city      = document.getElementById('npCity').value;
+                deliveryDetails.street    = document.getElementById('npStreet').value;
                 deliveryDetails.warehouse = document.getElementById('npWarehouse').value;
             } else if (deliveryType === 'ukrposhta') {
-                deliveryDetails.region = document.getElementById('ukrRegion').value;
-                deliveryDetails.city = document.getElementById('ukrCity').value;
-                deliveryDetails.street = document.getElementById('ukrStreet').value;
+                deliveryDetails.region   = document.getElementById('ukrRegion').value;
+                deliveryDetails.city     = document.getElementById('ukrCity').value;
+                deliveryDetails.street   = document.getElementById('ukrStreet').value;
                 deliveryDetails.postcode = document.getElementById('ukrPostcode').value;
             }
 
@@ -3109,103 +3107,96 @@
                 })),
                 total: cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0),
                 customer: {
-                    name: document.getElementById('customerName').value,
+                    name:    document.getElementById('customerName').value,
                     surname: document.getElementById('customerSurname').value,
-                    phone: document.getElementById('customerPhone').value,
-                    email: document.getElementById('customerEmail').value
+                    phone:   document.getElementById('customerPhone').value,
+                    email:   document.getElementById('customerEmail').value
                 },
                 delivery: deliveryDetails,
-                payment: { method: paymentNames[paymentMethod], type: paymentMethod },
-                date: new Date().toISOString(),
-                status: 'pending'
+                payment:  { method: paymentNames[paymentMethod], type: paymentMethod },
+                date:     new Date().toISOString(),
+                status:   'pending'
             };
 
-               if (saved) {
-    orders.push(order);
-    cart = [];
-    saveToStorage();
-    updateCart();
-    closeCheckoutModal();
+            const saved = await saveOrderToFirebase(order);
 
-    if (paymentMethod === 'wayforpay') {
-        openWayForPay(order);
-    } else {
-        alert(`✅ Замовлення #${order.id.toString().slice(-6)} успішно оформлено!`);
-        if (currentUser?.isAdmin) loadOrdersFromFirebase();
-    }
-} // ← закриває if (saved)
-} // ← закриває finalizeOrder()
-function openWayForPay(order) {
-    const merchantAccount = 'ТУТ_ТВІЙ_merchantAccount';
-    const merchantSecretKey = 'ТУТ_ТВІЙ_merchantSecretKey';
-    const merchantDomainName = window.location.hostname;
-    const orderReference = String(order.id);
-    const orderDate = Math.floor(Date.now() / 1000);
-    const amount = order.total;
-    const currency = 'UAH';
+            if (saved) {
+                orders.push(order);
+                allOrders.unshift(order);
+                cart = [];
+                saveToStorage();
+                updateCart();
+                updateAdminStats();
+                closeCheckoutModal();
 
-    const productNames = order.items.map(i => i.product.name);
-    const productCounts = order.items.map(i => i.quantity);
-    const productPrices = order.items.map(i => i.product.price);
-
-    // Генерація підпису
-    const signString = [
-        merchantAccount,
-        merchantDomainName,
-        orderReference,
-        orderDate,
-        amount,
-        currency,
-        ...productNames,
-        ...productCounts,
-        ...productPrices
-    ].join(';');
-
-    const merchantSignature = CryptoJS.HmacMD5(signString, merchantSecretKey).toString();
-
-    // Форма
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = 'https://secure.wayforpay.com/pay';
-    form.style.display = 'none';
-
-    const fields = {
-        merchantAccount,
-        merchantDomainName,
-        orderReference,
-        orderDate,
-        amount,
-        currency,
-        orderTimeout: 49000,
-        merchantSignature,
-        productName: productNames,
-        productCount: productCounts,
-        productPrice: productPrices,
-        returnUrl: window.location.href,
-        serviceUrl: '',
-    };
-
-    for (const [key, value] of Object.entries(fields)) {
-        if (Array.isArray(value)) {
-            value.forEach(v => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = v;
-                form.appendChild(input);
-            });
-        } else {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = value;
-            form.appendChild(input);
+                if (paymentMethod === 'wayforpay') {
+                    openWayForPay(order);
+                } else {
+                    alert(`✅ Замовлення #${order.id.toString().slice(-6)} успішно оформлено!`);
+                }
+            } else {
+                alert('❌ Помилка збереження замовлення. Спробуйте ще раз.');
+            }
         }
-    }
 
-    document.body.appendChild(form);
-    form.submit();
-}
+        function openWayForPay(order) {
+            const merchantAccount   = WAYFORPAY_CONFIG.merchantAccount;
+            const merchantSecretKey = WAYFORPAY_CONFIG.merchantSecretKey;
+            const merchantDomain    = window.location.hostname;
+            const orderReference    = String(order.id);
+            const orderDate         = String(Math.floor(Date.now() / 1000));
+            const amount            = String(order.total);
+            const currency          = 'UAH';
+
+            const productName  = order.items.map(i => i.product.name);
+            const productCount = order.items.map(i => String(i.quantity));
+            const productPrice = order.items.map(i => String(i.product.price));
+
+            const signString = [
+                merchantAccount, merchantDomain, orderReference, orderDate,
+                amount, currency,
+                ...productName, ...productCount, ...productPrice
+            ].join(';');
+
+            const merchantSignature = CryptoJS.HmacMD5(signString, merchantSecretKey).toString();
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'https://secure.wayforpay.com/pay';
+
+            const fields = {
+                merchantAccount,
+                merchantAuthType:   'SimpleSignature',
+                merchantDomainName: merchantDomain,
+                merchantSignature,
+                orderReference,
+                orderDate,
+                amount,
+                currency,
+                orderTimeout:    '49000',
+                returnUrl:       window.location.href,
+                serviceUrl:      '',
+                language:        'UA',
+                clientFirstName: order.customer.name,
+                clientLastName:  order.customer.surname,
+                clientPhone:     order.customer.phone,
+                clientEmail:     order.customer.email,
+            };
+
+            for (const [k, v] of Object.entries(fields)) {
+                const el = document.createElement('input');
+                el.type = 'hidden'; el.name = k; el.value = v;
+                form.appendChild(el);
+            }
+
+            productName .forEach(v => { const el = document.createElement('input'); el.type='hidden'; el.name='productName[]';  el.value=v; form.appendChild(el); });
+            productCount.forEach(v => { const el = document.createElement('input'); el.type='hidden'; el.name='productCount[]'; el.value=v; form.appendChild(el); });
+            productPrice.forEach(v => { const el = document.createElement('input'); el.type='hidden'; el.name='productPrice[]'; el.value=v; form.appendChild(el); });
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+        
 
 
         // ============ СТАТИСТИКА ============
