@@ -3120,19 +3120,93 @@
                 status: 'pending'
             };
 
-            const saved = await saveOrderToFirebase(order);
-            if (saved) {
-                orders.push(order);
-                cart = [];
-                saveToStorage();
-                updateCart();
-                closeCheckoutModal();
-                alert(`✅ Замовлення #${order.id.toString().slice(-6)} успішно оформлено!`);
-                if (currentUser?.isAdmin) loadOrdersFromFirebase();
-            } else {
-                alert('❌ Помилка при збереженні замовлення. Спробуйте ще раз.');
-            }
+               if (saved) {
+    orders.push(order);
+    cart = [];
+    saveToStorage();
+    updateCart();
+    closeCheckoutModal();
+
+    if (paymentMethod === 'wayforpay') {
+        openWayForPay(order);
+    } else {
+        alert(`✅ Замовлення #${order.id.toString().slice(-6)} успішно оформлено!`);
+        if (currentUser?.isAdmin) loadOrdersFromFirebase();
+    }
+} // ← закриває if (saved)
+} // ← закриває finalizeOrder()
+function openWayForPay(order) {
+    const merchantAccount = 'ТУТ_ТВІЙ_merchantAccount';
+    const merchantSecretKey = 'ТУТ_ТВІЙ_merchantSecretKey';
+    const merchantDomainName = window.location.hostname;
+    const orderReference = String(order.id);
+    const orderDate = Math.floor(Date.now() / 1000);
+    const amount = order.total;
+    const currency = 'UAH';
+
+    const productNames = order.items.map(i => i.product.name);
+    const productCounts = order.items.map(i => i.quantity);
+    const productPrices = order.items.map(i => i.product.price);
+
+    // Генерація підпису
+    const signString = [
+        merchantAccount,
+        merchantDomainName,
+        orderReference,
+        orderDate,
+        amount,
+        currency,
+        ...productNames,
+        ...productCounts,
+        ...productPrices
+    ].join(';');
+
+    const merchantSignature = CryptoJS.HmacMD5(signString, merchantSecretKey).toString();
+
+    // Форма
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'https://secure.wayforpay.com/pay';
+    form.style.display = 'none';
+
+    const fields = {
+        merchantAccount,
+        merchantDomainName,
+        orderReference,
+        orderDate,
+        amount,
+        currency,
+        orderTimeout: 49000,
+        merchantSignature,
+        productName: productNames,
+        productCount: productCounts,
+        productPrice: productPrices,
+        returnUrl: window.location.href,
+        serviceUrl: '',
+    };
+
+    for (const [key, value] of Object.entries(fields)) {
+        if (Array.isArray(value)) {
+            value.forEach(v => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = v;
+                form.appendChild(input);
+            });
+        } else {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = value;
+            form.appendChild(input);
         }
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
 
         // ============ СТАТИСТИКА ============
         function updateAdminStats() {
