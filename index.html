@@ -3033,7 +3033,20 @@
         function prevStep(step) {
             showCheckoutStep(step);
         }
-
+        function updateOrderSummary() {
+    const summaryItems = document.getElementById('orderSummaryItems');
+    const finalTotal = document.getElementById('finalTotal');
+    
+    summaryItems.innerHTML = cart.map(item => `
+        <div class="summary-row">
+            <span>${item.product.name} x${item.quantity}</span>
+            <span>${(item.product.price * item.quantity).toLocaleString()} грн</span>
+        </div>
+    `).join('');
+    
+    const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    finalTotal.textContent = total.toLocaleString() + ' грн';
+}
         function selectDelivery(type) {
             document.querySelectorAll('#checkoutStep2 .radio-option').forEach(opt => opt.classList.remove('selected'));
             document.querySelector(`input[value="${type}"]`).closest('.radio-option').classList.add('selected');
